@@ -14,6 +14,7 @@ worker.onmessage = (msg) => {
       // data[1] holds the percentage progress
       break
     case 'result':
+      worker.terminate()
       result_callback(data[1])
       break
     case 'log':

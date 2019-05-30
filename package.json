@@ -1,0 +1,21 @@
+{
+  "name": "b4c",
+  "version": "0.0.1",
+  "license": "GPL-3.0",
+  "description": "Standalone compiler for the Blizzard 4 16-bit computer.",
+  "author": "Daniel Spencer <danielfspencer1@gmail.com>",
+  "main": "./index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "homepage": "https://github.com/danielfspencer/blizzard-4",
+  "repository": "https://github.com/danielfspencer/blizzard-4",
+  "devDependencies": {
+    "colors": "latest",
+    "commander": "latest",
+    "tiny-worker": "latest"
+  },
+  "dependencies": {
+    "present": "^1.0.0"
+  }
+}

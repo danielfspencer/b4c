@@ -1,6 +1,6 @@
 .dropbox
 node_modules/
 package-lock.json
-.b4
-.asm
-.bin
+*.b4
+*.asm
+*.bin

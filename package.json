@@ -14,8 +14,5 @@
     "colors": "latest",
     "commander": "latest",
     "tiny-worker": "latest"
-  },
-  "dependencies": {
-    "present": "^1.0.0"
   }
 }

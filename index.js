@@ -3,7 +3,8 @@ const fs = require('fs')
 
 // internal modules
 const log = require('./log.js')
-const compiler = require('./compiler/compile.js')
+const compiler = require('./compiler/interface.js')
+const assembler = require('./assembler/interface.js')
 
 // .option('-s --size <size>', 'Pizza size', /^(large|medium|small)$/i, 'medium')
 // .option('-d --drink [drink]', 'Drink', /^(coke|pepsi|izze)$/i)
@@ -18,8 +19,13 @@ program
 // console.log(process.argv)
 // compiler.compile("var int test 2 + 2", console.log)
 
+log.info("main: // Compiling... //")
 let data = fs.readFileSync('input.b4')
-
 compiler.compile(data.toString(), (result) => {
   fs.writeFileSync('output.asm', result)
+
+  log.info("main: // Assembling... //")
+  assembler.assemble(result, (result) => {
+    fs.writeFileSync('output.bin', result)
+  })
 })

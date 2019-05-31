@@ -16,7 +16,7 @@ console.error = (msg) => {
 
 if (typeof window === 'undefined') {  // if we are running under nodejs define performance.now
   try {
-    performance = require('perf_hooks').performance
+    performance = {now:require('performance-now')}
   } catch (e) {}
 }
 

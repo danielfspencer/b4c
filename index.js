@@ -11,7 +11,7 @@ const compiler = require('./compiler/compile.js')
 program
   .version('compiler/assembler v0.44.1\ninterface v0.0.1')
   .option('-o --output <filename>', 'output filename', '<input name>.asm')
-  .option('-v --verbose [verbose]', 'enables debugging messages',)
+  .option('-v --verbose [verbose]', 'enables debugging messages')
 
   .parse(process.argv)
 

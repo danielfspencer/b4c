@@ -13,6 +13,7 @@
   "devDependencies": {
     "colors": "latest",
     "commander": "latest",
-    "tiny-worker": "latest"
+    "tiny-worker": "latest",
+    "performance-now": "latest"
   }
 }

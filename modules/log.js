@@ -18,7 +18,7 @@ exports.info = (msg) => {
 
 exports.debug = (msg) => {
   if (exports.quiet) {return}
-  console.debug(colors.grey('debug') + ' ' + toString(msg))
+  console.info(colors.grey('debug') + ' ' + toString(msg))
 }
 
 function toString(obj) {

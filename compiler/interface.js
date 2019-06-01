@@ -1,13 +1,17 @@
 const WebWorker = require('tiny-worker')
+const path = require('path')
+// not actually used but this tricks it into being loaded
+// for the worker when packaged
+const now = require('performance-now')
 
 // internal modules
-const log = require('../log.js')
+const log = require('../modules/log.js')
 
 let callbacks
 let worker
 
 function start_worker() {
-  worker = new WebWorker('compiler/engine.js')
+  worker = new WebWorker(path.join(__dirname, 'engine.js'))
 
   worker.onmessage = (msg) => {
     let data = msg.data
@@ -48,14 +52,13 @@ function start_worker() {
 
   worker.onerror = (e) => {
     let msg = 'Internal compiler error, line ' + e.lineno + ': \n' + e.message
-    log.error('cmp :' + msg)
+    log.error('cmp : ' + msg)
   }
 }
 
 exports.compile = (input, success, fail) => {
   start_worker()
   callbacks = {success:success, fail:fail}
-  // worker.postMessage(['debug', true])
   worker.postMessage(['compile', input])
 }
 

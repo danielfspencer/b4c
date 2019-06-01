@@ -1,25 +1,34 @@
 const colors = require('colors/safe')
 
+exports.quiet = false
+
 exports.error = (msg) => {
   console.error(colors.red('error') + ' ' + toString(msg))
 }
 
 exports.warn = (msg) => {
+  if (exports.quiet) {return}
   console.warn(' ' + colors.yellow('warn') + ' ' + toString(msg))
 }
 
 exports.info = (msg) => {
+  if (exports.quiet) {return}
   console.info(' ' + colors.blue('info') + ' ' + toString(msg))
 }
 
 exports.debug = (msg) => {
+  if (exports.quiet) {return}
   console.debug(colors.grey('debug') + ' ' + toString(msg))
 }
 
-function toString (obj) {
+function toString(obj) {
   if (typeof message === 'object') {
-    return JSON.stringify(obj)
+    return padNewlines(JSON.stringify(obj))
   } else {
-    return obj
+    return padNewlines(obj)
   }
+}
+
+function padNewlines(text) {
+  return text.replace(/\n/g, "\n            ");
 }

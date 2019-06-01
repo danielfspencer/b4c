@@ -1,13 +1,14 @@
 const WebWorker = require('tiny-worker')
+const path = require('path')
 
 // internal modules
-const log = require('../log.js')
+const log = require('../modules/log.js')
 
 let callbacks
 let worker
 
 function start_worker() {
-  worker = new WebWorker('assembler/engine.js')
+  worker = new WebWorker(path.join(__dirname, 'engine.js'))
 
   worker.onmessage = (msg) => {
     let data = msg.data
@@ -45,13 +46,12 @@ function start_worker() {
 
   worker.onerror = (e) => {
     let msg = 'Internal assembler error, line ' + e.lineno + ': \n' + e.message
-    log.error('asm :' + msg)
+    log.error('asm : ' + msg)
   }
 }
 
 exports.assemble = (input, success, fail) => {
   start_worker()
   callbacks = {success:success, fail:fail}
-  // worker.postMessage(['debug', true])
   worker.postMessage(['assemble',input])
 }

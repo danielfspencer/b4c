@@ -50,8 +50,11 @@ function start_worker() {
   }
 }
 
+exports.debug = false
+
 exports.assemble = (input, success, fail) => {
   start_worker()
   callbacks = {success:success, fail:fail}
+  worker.postMessage(['debug',exports.debug])
   worker.postMessage(['assemble',input])
 }

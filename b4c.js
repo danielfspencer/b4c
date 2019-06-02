@@ -6,7 +6,10 @@ const log = require('./modules/log.js')
 const compiler = require('./compiler/interface.js')
 const assembler = require('./assembler/interface.js')
 
-function fail() {
+function fail(message) {
+  if (message) {
+    log.error('main: ' + message)
+  }
   process.exit(1)
 }
 
@@ -15,8 +18,7 @@ function open_file(path) {
   try {
     file = fs.readFileSync(path)
   } catch (error) {
-    log.error('main: Unable to read file\n' + error.message)
-    fail()
+    fail('Unable to read file\n' + error.message)
   }
   return file
 }
@@ -25,8 +27,7 @@ function write_file(path,data) {
   try {
     fs.writeFileSync(path, data)
   } catch (error) {
-  log.error('main: Unable to write to file\n' + error.message)
-    fail()
+    fail('Unable to write to file\n' + error.message)
   }
 }
 
@@ -36,16 +37,18 @@ program
   .option('-o --output <filename>', 'output filename')
   .option('-c --compile', 'compile the input file')
   .option('-a --assemble', 'assemble the input file')
-  .option('-v --verbose', 'enables debugging messages')
-  .option('-q --quiet', 'show only error messages')
+  .option('-v --verbose', 'print debugging messages')
+  .option('-q --quiet', 'only print error messages')
   .on('--help', () => {
+    console.log('  If neither -c nor -a is specified the input file\'s')
+    console.log('  extension determines the mode')
     console.log('\nExamples:')
     console.log('  Compile program.b4 into program.asm')
     console.log('  $ b4c program.b4\n')
     console.log('  Compile and assemble program.b4 into program.bin')
     console.log('  $ b4c -ca program.b4\n')
     console.log('  Assemble program.asm into program.bin')
-    console.log('  $ b4c -a program.asm')
+    console.log('  $ b4c program.asm')
   })
   .parse(process.argv)
 
@@ -58,6 +61,17 @@ let assemble
 let input_path = program.args[0]
 let output_path
 let mode_text
+let verbose = program.verbose
+let quiet = program.quiet
+
+if (verbose && quiet) {
+  fail('Options \'verbose\' and \'quiet\' cannot be specified at the same time')
+} else if (verbose) {
+  compiler.debug = true
+  assembler.debug = true
+}
+
+log.quiet = quiet
 
 if (!(program.assemble || program.compile)) {  // user has not specified what mode they want
   // guess based on the input filename
@@ -68,8 +82,7 @@ if (!(program.assemble || program.compile)) {  // user has not specified what mo
     compile = false
     assemble = true
   } else {
-    log.error('main: Unable to determine required action from input file type')
-    fail()
+    fail('Unable to determine required action from input file type')
   }
 } else {                                      // user has specified what mode they want
   compile = program.compile

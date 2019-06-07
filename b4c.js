@@ -40,8 +40,8 @@ program
   .option('-v --verbose', 'print debugging messages')
   .option('-q --quiet', 'only print error messages')
   .on('--help', () => {
-    console.log('  If neither -c nor -a is specified the input file\'s')
-    console.log('  extension determines the mode')
+    console.log('  If neither -c nor -a is specified then the input')
+    console.log('  files\'s extension determines the mode')
     console.log('\nExamples:')
     console.log('  Compile program.b4 into program.asm')
     console.log('  $ b4c program.b4\n')

@@ -25,7 +25,7 @@ function start_worker() {
         if (data[1] === "") {
           callbacks.fail()
         } else {
-          callbacks.success(data[1])
+          callbacks.success(data[1], data[2])
         }
         break
       case 'log':

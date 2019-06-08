@@ -16,7 +16,7 @@ function fail(message) {
 function open_file(path) {
   let file
   try {
-    file = fs.readFileSync(path)
+    file = fs.readFileSync(path).toString()
   } catch (error) {
     fail('Unable to read file\n' + error.message)
   }
@@ -38,6 +38,7 @@ program
   .option('-c --compile', 'compile the input file')
   .option('-a --assemble', 'assemble the input file')
   .option('-v --verbose', 'print debugging messages')
+  .option('-d --dump', 'dump the compiler\'s AST to tokens.json')
   .option('-q --quiet', 'only print error messages')
   .on('--help', () => {
     console.log('  If neither -c nor -a is specified then the input')
@@ -63,6 +64,7 @@ let output_path
 let mode_text
 let verbose = program.verbose
 let quiet = program.quiet
+let dump_tokens = program.dump
 
 if (verbose && quiet) {
   fail('Options \'verbose\' and \'quiet\' cannot be specified at the same time')
@@ -97,6 +99,10 @@ if (compile && assemble) {
   mode_text = "assemble"
 }
 
+if (!compile && dump_tokens) {
+  fail('The \'dump\' option can only be specified when compiling')
+}
+
 if (program.output) { // user has specified output file path
   output_path = program.output
 } else {              // user has not specified output path
@@ -124,19 +130,23 @@ log.debug('main: Mode: ' + mode_text)
 let input_file = open_file(input_path)
 
 if (compile) {
-  compiler.compile(input_file.toString(), (result) => {
+  compiler.compile(input_file, (asm, ast) => {
+
+    if (dump_tokens) {
+      write_file('tokens.json', ast)
+    }
 
     if (assemble) {
-      assembler.assemble(result, (result) => {
-        write_file(output_path, result)
+      assembler.assemble(asm, (bin) => {
+        write_file(output_path, bin)
       }, fail)
     } else {
-      write_file(output_path, result)
+      write_file(output_path, asm)
     }
 
   }, fail)
 } else if (assemble) {
-  assembler.assemble(input_file.toString(), (result) => {
-    write_file(output_path, result)
+  assembler.assemble(input_file, (bin) => {
+    write_file(output_path, bin)
   }, fail)
 }

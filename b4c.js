@@ -16,6 +16,10 @@ function fail(message) {
 function open_file(path) {
   let file
   try {
+    // stdin is file 0
+    if (path == "-") {
+      path = 0
+    }
     file = fs.readFileSync(path).toString()
   } catch (error) {
     fail('Unable to read file\n' + error.message)
@@ -25,7 +29,11 @@ function open_file(path) {
 
 function write_file(path,data) {
   try {
-    fs.writeFileSync(path, data)
+    if (path == "-") {
+      process.stdout.write(data)
+    } else {
+      fs.writeFileSync(path, data)
+    }
   } catch (error) {
     fail('Unable to write to file\n' + error.message)
   }

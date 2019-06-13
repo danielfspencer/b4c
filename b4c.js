@@ -32,7 +32,7 @@ function write_file(path,data) {
 }
 
 program
-  .version('compiler/assembler v0.44.1\ninterface v0.0.1')
+  .version('v0.45.0')
   .arguments('<file>')
   .option('-o --output <filename>', 'output filename')
   .option('-c --compile', 'compile the input file')

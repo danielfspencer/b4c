@@ -1,6 +1,6 @@
 ### b4c
-Standalone compiler and assembler for my Blizzard 4 16-bit computer. The compiler and the assembler are taken directly 
-from the corresponding version of the [GUI toolchain app](https://github.com/danielfspencer/blizzard-4/). Both projects 
+Standalone compiler and assembler for my Blizzard 4 16-bit computer. The compiler and the assembler are taken directly
+from the corresponding version of the [GUI toolchain app](https://github.com/danielfspencer/blizzard-4/). Both projects
 use the same version numbers.
 
 ```
@@ -54,3 +54,10 @@ Or, build a binary for your OS. The generated executable is found in the ```dist
 ```bash
 npm run dist
 ```
+
+If you are running a Linux distribution, you can also install the binary for user-wide use with:
+```bash
+cp dist/b4c ~/.local/bin/
+```
+
+You can then invoke the compiler by typing ```b4c``` anywhere.

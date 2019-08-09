@@ -29,7 +29,7 @@ if (typeof process !== "undefined") {
 
 const data_type_size = {int:1,sint:1,long:2,slong:2,float:2,bool:1,str:1,array:4,none:0}
 const data_type_default_value = {int:"0",sint:"0",long:"0",slong:"0",float:"0",bool:"false",str:"\"\""}
-const reserved_keywords = {"if":"","for":"","while":"","def":"","true":"","false":"","sys.odd":"","sys":"","array":"","return":"","break":"","continue":""}
+const reserved_keywords = {"if":"","for":"","while":"","def":"","true":"","false":"","sys.odd":"","sys.ov":"","sys":"","array":"","return":"","break":"","continue":""}
 
 onmessage = (msg) => {
   switch(msg.data[0]) {
@@ -75,12 +75,12 @@ const log = {
 }
 
 function send_log(message, level) {
-  if (level != "error" && !show_log_messages || (level == "debug" && !debug)) {
+  if (level != "error" && !show_log_messages || (level === "debug" && !debug)) {
     return
   }
 
   let text
-  if (typeof message == "object") {
+  if (typeof message === "object") {
     text = JSON.stringify(message)
   } else {
     text = message
@@ -116,7 +116,7 @@ function pad(string, width) {
 }
 
 function CSVToArray(strData, strDelimiter){
-  if (strData == "") {return []}
+  if (strData === "") {return []}
   strDelimiter = (strDelimiter || ",")
   let objPattern = new RegExp(
     ( "(\\" + strDelimiter + "|\\r?\\n|\\r|^)" +
@@ -163,7 +163,7 @@ function benchmark(iterations) {
     }
     let t1 = timer()
     total_time += t1 - t0
-    if (Math.round((i+1) % (iterations/50)) == 0 ) {
+    if (Math.round((i+1) % (iterations/50)) === 0 ) {
       postMessage(["update",(i+1)/iterations*100])
     }
   }
@@ -186,9 +186,9 @@ function all_matches(pattern, string) {
 
 function find_operation(pattern, string) {
   let operators = all_matches(pattern,string)
-  if (operators.length == 1) {
+  if (operators.length === 1) {
     return operators[0]
-  } else if (operators.length == 3) {
+  } else if (operators.length === 3) {
     return operators[1]
   } else {
     throw new CompError("Unable to find mathematical operator")
@@ -209,9 +209,9 @@ function parse_int(string) {
 }
 
 function find_type_priority(expr1,expr2) {
-  if (expr1.name == "var_or_const") {
+  if (expr1.name === "var_or_const") {
     return translate(expr1)[2]
-  } else if (expr2.name == "var_or_const") {
+  } else if (expr2.name === "var_or_const") {
     return translate(expr2)[2]
   } else {
     return translate(expr1)[2]
@@ -282,12 +282,26 @@ function write_operand(expr, type) {
   return result
 }
 
-function inc_or_dec_token(var_name, op, value_token) {
+function operation_assignment_token(var_name, op, value_token) {
   let var_token = {name:"var_or_const", type:"expression", arguments: {
     name:var_name
   }}
 
   let token = set_token(var_name, op, [var_token, value_token])
+  return translate(token)
+}
+
+function function_call(name, args) {
+  load_lib(name)
+  let token = {
+    name:"function",
+    type:"expression",
+    arguments: {
+      name: name,
+      exprs: args
+    }
+  }
+
   return translate(token)
 }
 
@@ -349,11 +363,11 @@ function get_temp_word() {
 function translate_body(tokens) {
   log.debug(`nested translate: ${tokens.length} token(s)`)
   let result = []
-  if (tokens.length == 0) {
+  if (tokens.length === 0) {
     return result
   }
   for (let i = 0; i < tokens.length; i++) {
-    if (tokens[i].type == "expression" && tokens[i].name != "function" || typeof tokens[i] === undefined) {
+    if (tokens[i].type === "expression" && tokens[i].name != "function" || typeof tokens[i] === undefined) {
       throw new CompError("Unexpected expression", tokens[i].line)
     } else {
       let command
@@ -366,7 +380,7 @@ function translate_body(tokens) {
           throw error
         }
       }
-      if (tokens[i].name == "function") {
+      if (tokens[i].name === "function") {
         command = command[0] // if it is a function call (which is an expression) take only the prefix and bin the result register [[tokens],result] -> [tokens]
         let function_type = state.function_table[tokens[i].arguments.name].data_type
         if (function_type !== "none") {
@@ -425,7 +439,7 @@ function tokenise(input, line) {
   } else if (/^\"(.+)\"$|^(\"\")$/.test(input)) {     //string
     token = {name:"str",type:"expression",arguments:{value:input,type_guess:"str"}}
 
-  } else if (list[0] == "var") {                       // var [type] [name] <expr>
+  } else if (list[0] === "var") {                       // var [type] [name] <expr>
     if (list.length >= 4) {
       let expr = tokenise(list.slice(3).join(" "), line) // extract all the letters after command
       if (!/(?=^\S*)[a-zA-Z_][a-zA-Z0-9_]*/.test(list[2])) { throw new CompError(`Invalid name '${list[2]}'`)}
@@ -437,7 +451,7 @@ function tokenise(input, line) {
       throw new CompError("Variable decleration syntax:\nvar [type] [name] <expr>")
     }
 
-  } else if (list[0] == "arg") {                      // arg [type] [name] <expr>
+  } else if (list[0] === "arg") {                      // arg [type] [name] <expr>
     if (list.length >= 4) {
       let expr = tokenise(list.slice(3).join(" "), line) // extract all the letters after command
       if (!/(?=^\S*)[a-zA-Z_][a-zA-Z0-9_]*/.test(list[2])) { throw new CompError(`Invalid name '${list[2]}'`)}
@@ -449,7 +463,7 @@ function tokenise(input, line) {
       throw new CompError("Argument decleration syntax:\narg [type] [name] <expr>")
     }
 
-  } else if (list[0] == "const") {             // const [type] [name] [expr]
+  } else if (list[0] === "const") {             // const [type] [name] [expr]
     if (list.length >= 4) {
       let expr = tokenise(list.slice(3).join(" "), line) // extract all the letters after command
       if (!/(?=^\S*)[a-zA-Z_][a-zA-Z0-9_]*/.test(list[2])) { throw new CompError(`Invalid name '${list[2]}'`)}
@@ -461,7 +475,7 @@ function tokenise(input, line) {
       throw new CompError("Constant decleration syntax:\nconst [type] [name] <expr>")
     }
 
-  } else if (list[0] == "global") {             // global [type] [name] [expr]
+  } else if (list[0] === "global") {             // global [type] [name] [expr]
     if (list.length >= 4) {
       let expr = tokenise(list.slice(3).join(" "), line) // extract all the letters after command
       if (!/(?=^\S*)[a-zA-Z_][a-zA-Z0-9_]*/.test(list[2])) { throw new CompError(`Invalid name '${list[2]}'`)}
@@ -473,7 +487,7 @@ function tokenise(input, line) {
       throw new CompError("Global decleration syntax:\nglobal [type] [name] <expr>")
     }
 
-  } else if (list[0] == "if") {               // if [bool]
+  } else if (list[0] === "if") {               // if [bool]
     if (list.length > 1) {
       let expr = tokenise(list.slice(1).join(" "), line) // extract all the letters after command
       token = {name:"if",type:"structure",body:[],arguments:{expr:expr}}
@@ -492,7 +506,7 @@ function tokenise(input, line) {
       throw new CompError("Else If statement has no conditional expression")
     }
 
-  } else if (list[0] == "while") {              // while [bool]
+  } else if (list[0] === "while") {              // while [bool]
     if (list.length > 1) {
       let expr = tokenise(list.slice(1).join(" "), line) // extract all the letters after command
       token = {name:"while",type:"structure",body:[],arguments:{expr:expr}}
@@ -500,7 +514,7 @@ function tokenise(input, line) {
       throw new CompError("While statement has no conditional expression")
     }
 
-   } else if (list[0] == "for") {               // for [cmd];[bool];[cmd]
+   } else if (list[0] === "for") {               // for [cmd];[bool];[cmd]
     if (list.length > 1) {
       let string_list = input.slice(3).split(";")
       let init = tokenise(string_list[0],line)
@@ -511,7 +525,15 @@ function tokenise(input, line) {
       throw new CompError("Missing cmd/bool/cmd list")
     }
 
-  } else if (list[0] == "def") {                  //def [name] [opt. return type]       need to check if name is available
+  } else if (list[0] === "repeat") {               // repeat [postive number]
+    if (list.length > 1) {
+      let expr = tokenise(list.slice(1).join(" "), line) // extract all the letters after command
+      token = {name:"repeat",type:"structure",body:[],arguments:{expr:expr}}
+    } else {
+      throw new CompError("Repeat statement has no number")
+    }
+
+  } else if (list[0] === "def") {                  //def [name] [opt. return type]       need to check if name is available
     if (list.length < 2) {
       throw new CompError("Functions require a name")
     } else if (list.length > 3) {
@@ -528,7 +550,7 @@ function tokenise(input, line) {
 
     token = {name:"function_def",type:"structure",body:[],arguments:{name:list[1],type:list[2],force_cast:force_cast}}
 
-  } else if (list[0] == "free") {                 // free [name]
+  } else if (list[0] === "free") {                 // free [name]
     token = {name:"delete",type:"command",arguments:{name:list[1]}}
 
   } else if (/^break$/.test(input)) {                 // break
@@ -547,7 +569,7 @@ function tokenise(input, line) {
     let expr = tokenise(matches[2], line)
     token = {name:"pointer_set",type:"command",arguments:{expr:expr,name:matches[1]}}
 
-  } else if (list[0] == "return") {                    // return
+  } else if (list[0] === "return") {                    // return
     let expr = undefined
     let expr_string = list.slice(1).join(" ")
 
@@ -557,13 +579,25 @@ function tokenise(input, line) {
 
     token = {name:"return",type:"command",arguments:{expr:expr}}
 
-  } else if (list[1] == "+=") {                    // [name] += [expr]
+  } else if (list[1] === "+=") {                    // [name] += [expr]
     let expr = tokenise(list.slice(2).join(" "), line)
-    token = {name:"increment",type:"command",arguments:{expr:expr,name:list[0]}}
+    token = {name:"addition_assignment",type:"command",arguments:{expr:expr,name:list[0]}}
 
-  } else if (list[1] == "-=") {                    // [name] -= [expr]
+  } else if (list[1] === "-=") {                    // [name] -= [expr]
     let expr = tokenise(list.slice(2).join(" "), line)
-    token = {name:"decrement",type:"command",arguments:{expr:expr,name:list[0]}}
+    token = {name:"subtraction_assignment",type:"command",arguments:{expr:expr,name:list[0]}}
+
+  } else if (list[1] === "*=") {                    // [name] *= [expr]
+    let expr = tokenise(list.slice(2).join(" "), line)
+    token = {name:"multiplication_assignment",type:"command",arguments:{expr:expr,name:list[0]}}
+
+  } else if (list[1] === "/=") {                    // [name] /= [expr]
+    let expr = tokenise(list.slice(2).join(" "), line)
+    token = {name:"division_assignment",type:"command",arguments:{expr:expr,name:list[0]}}
+
+  } else if (list[1] === "%=") {                    // [name] %= [expr]
+    let expr = tokenise(list.slice(2).join(" "), line)
+    token = {name:"modulo_assignment",type:"command",arguments:{expr:expr,name:list[0]}}
 
   } else if (/.+?(?=\+\+)/.test(input)) { //  [name]++
     token = {name:"increment_1",type:"command",arguments:{name:/.+?(?=\+\+)/.exec(input)}}
@@ -603,7 +637,7 @@ function tokenise(input, line) {
     }
     token = {name:"number",type:"expression",arguments:{value:input,type_guess:guess}}
 
-  } else if (list[0] == "include") {
+  } else if (list[0] === "include") {
     token = {name:"include",type:"command",arguments:{name:list[1]}}
 
   } else if (/^([a-zA-Z_][a-zA-Z0-9_]*)\.(append|insert)\((.*)\)$/.test(input)) {   // array function ie. array_name.insert/append(args)
@@ -695,12 +729,12 @@ function tokenise(input, line) {
       let expr = tokenise(args[0][0], line)
       token = {name:operation,type:"expression",arguments:{expr:expr}}
 
-    } else if (operation == "sys.odd") {
+    } else if (operation === "sys.odd") {
       let args = /([^\n\r]*)sys.odd\s*/.exec(input)
       let expr = tokenise(args[1], line)
       token = {name:"is_odd",type:"expression",arguments:{expr:expr}}
 
-    } else if (operation == "sys.ov") {
+    } else if (operation === "sys.ov") {
       token = {name:"overflow",type:"expression",arguments:{}}
 
     } else {
@@ -752,7 +786,48 @@ function translate(token, ctx_type) {
     switch(token.name) {
 
     case "asm": {
-      result = [args.value]
+      let words = args.value.split(" ")
+
+      // for each word in the assembly statement, check to see if any names need
+      // substituting for their ram addresses
+      for (let i = 0; i < words.length; i++) {
+        let word = words[i]
+
+        // names begining with & represent the address of the variable
+        let addr_operator = word.startsWith("&")
+
+        // names begining with & represent the value of the variable
+        let value_operator = word.startsWith("$")
+
+        if (addr_operator || value_operator) {
+          let name = word.substr(1) // remove the operator character
+          let index_regex = /\[(\d+)\]/.exec(name) // check for an index after the name
+          let index = 0
+
+          if (index_regex !== null) {
+            index = parseInt(index_regex[1])    // parse the index value
+            name = /(\w+)\[\d+\]/.exec(name)[1] // trim the name to exclude the index
+          }
+
+          let token = {name:"var_or_const", type:"expression", arguments: {
+            name: name
+          }}
+
+          let [prefix, values] = translate(token)
+          if (index >= values.length) {
+            throw new CompError(`Cannot access word ${index + 1} of a ${values.length}-word data type`)
+          }
+
+          let symbol = values[index]
+
+          if (addr_operator) {
+            words[i] = symbol.slice(1, -1)
+          } else {
+            words[i] = symbol
+          }
+        }
+      }
+      result = [words.join(" ")]
     } break
 
     case "var_alloc": {    //var [name] [type] <expr>
@@ -842,7 +917,7 @@ function translate(token, ctx_type) {
 
     case "global_alloc": {    //global [name] [type] <expr>
       // arrays require a different allocation method
-      if (args.type == "array") {
+      if (args.type === "array") {
         token.name = "global_array_alloc"
         result = translate(token)
         break
@@ -1334,19 +1409,31 @@ function translate(token, ctx_type) {
     //all the cmds below are just shortcuts for set tokens
     //i.e. a++    becomes a = a + 1
     case "increment_1": { //[name]++
-      result = inc_or_dec_token(args.name, "+", tokenise("1"))
+      result = operation_assignment_token(args.name, "+", tokenise("1"))
     } break
 
     case "decrement_1": { //[name]--
-      result = inc_or_dec_token(args.name, "-", tokenise("1"))
+      result = operation_assignment_token(args.name, "-", tokenise("1"))
     } break
 
-    case "increment": { //[name] += [expr]
-      result = inc_or_dec_token(args.name, "+", args.expr)
+    case "addition_assignment": { //[name] += [expr]
+      result = operation_assignment_token(args.name, "+", args.expr)
     } break
 
-    case "decrement": { //[name] -= [expr]
-      result = inc_or_dec_token(args.name, "-", args.expr)
+    case "subtraction_assignment": { //[name] -= [expr]
+      result = operation_assignment_token(args.name, "-", args.expr)
+    } break
+
+    case "multiplication_assignment": { //[name] *= [expr]
+      result = operation_assignment_token(args.name, "*", args.expr)
+    } break
+
+    case "division_assignment": { //[name] /= [expr]
+      result = operation_assignment_token(args.name, "/", args.expr)
+    } break
+
+    case "modulo_assignment": { //[name] %= [expr]
+      result = operation_assignment_token(args.name, "%", args.expr)
     } break
 
     case "comment": {   // comment (begins with //)
@@ -1395,7 +1482,7 @@ function translate(token, ctx_type) {
     } break
 
     case "include": {
-      if (args.name == "*") {
+      if (args.name === "*") {
         for (let name in libs) {
           load_lib(name)
         }
@@ -1420,11 +1507,10 @@ function translate(token, ctx_type) {
 
     default:
       throw new CompError(`Error translating command:\nUnknown type '${token.name}'`)
-      break
     }
     return result
 
-  } else if (token.type == "expression") {
+  } else if (token.type === "expression") {
 
     let prefix = []
     let registers = [""]
@@ -1491,7 +1577,7 @@ function translate(token, ctx_type) {
         throw new CompError("Signed integer out of range (± 2^15 / 32767 max)")
       }
 
-      if (dec_val == 0) {
+      if (dec_val === 0) {
         negative = false
       }
 
@@ -1539,7 +1625,7 @@ function translate(token, ctx_type) {
 
       let dec_val = parse_int(args.value)
 
-      if (dec_val == 0) {
+      if (dec_val === 0) {
         negative = false
       }
 
@@ -1613,24 +1699,15 @@ function translate(token, ctx_type) {
         } break
 
         case "long": {
-          load_lib("sys.long_add")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.long_add",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.long_add", [args.expr1,args.expr2])
         } break
 
         case "slong": {
-          load_lib("sys.slong_add")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.slong_add",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.slong_add", [args.expr1,args.expr2])
         } break
 
         default:
           throw new CompError(`Unsupported datatype '${ctx_type}' for operation '${token.name}'`)
-          break
       }
     } break
 
@@ -1648,24 +1725,15 @@ function translate(token, ctx_type) {
         } break
 
         case "long": {
-          load_lib("sys.long_subtract")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.long_subtract",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.long_subtract", [args.expr1,args.expr2])
         } break
 
         case "slong": {
-          load_lib("sys.slong_subtract")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.slong_subtract",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.slong_subtract", [args.expr1,args.expr2])
         } break
 
         default:
           throw new CompError(`Unsupported datatype '${ctx_type}' for operation '${token.name}'`)
-          break
       }
     } break
 
@@ -1677,40 +1745,23 @@ function translate(token, ctx_type) {
       }
       switch (ctx_type) {
         case "int": {
-          load_lib("sys.int_multiply")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.int_multiply",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.int_multiply", [args.expr1,args.expr2])
         } break
 
         case "sint": {
-          load_lib("sys.sint_multiply")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.sint_multiply",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.sint_multiply", [args.expr1,args.expr2])
         } break
 
         case "long": {
-          load_lib("sys.long_multiply")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.long_multiply",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.long_multiply", [args.expr1,args.expr2])
         } break
 
         case "slong": {
-          load_lib("sys.slong_multiply")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.slong_multiply",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.slong_multiply", [args.expr1,args.expr2])
         } break
 
         default:
           throw new CompError(`Unsupported datatype '${ctx_type}' for operation '${token.name}'`)
-          break
       }
     } break
 
@@ -1722,40 +1773,23 @@ function translate(token, ctx_type) {
       }
       switch (ctx_type) {
         case "int": {
-          load_lib("sys.int_divide")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.int_divide",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.int_divide", [args.expr1,args.expr2])
         } break
 
         case "sint": {
-          load_lib("sys.int_divide")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.sint_divide",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.sint_divide", [args.expr1,args.expr2])
         } break
 
         case "long": {
-          load_lib("sys.long_divide")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.long_divide",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.long_divide", [args.expr1,args.expr2])
         } break
 
         case "slong": {
-          load_lib("sys.slong_divide")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.slong_divide",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.slong_divide", [args.expr1,args.expr2])
         } break
 
         default:
           throw new CompError(`Unsupported datatype '${ctx_type}' for operation '${token.name}'`)
-          break
       }
     } break
 
@@ -1767,40 +1801,23 @@ function translate(token, ctx_type) {
       }
       switch (ctx_type) {
         case "int": {
-          load_lib("sys.int_exponent")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.int_exponent",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.int_exponent", [args.expr1,args.expr2])
         } break
 
         case "sint": {
-          load_lib("sys.sint_exponent")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.sint_exponent",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.sint_exponent", [args.expr1,args.expr2])
         } break
 
         case "long": {
-          load_lib("sys.long_exponent")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.long_exponent",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.long_exponent", [args.expr1,args.expr2])
         } break
 
         case "slong": {
-          load_lib("sys.slong_exponent")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.slong_exponent",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.slong_exponent", [args.expr1,args.expr2])
         } break
 
         default:
           throw new CompError(`Unsupported datatype '${ctx_type}' for operation '${token.name}'`)
-          break
       }
     } break
 
@@ -1812,40 +1829,23 @@ function translate(token, ctx_type) {
       }
       switch (ctx_type) {
         case "int": {
-          load_lib("sys.int_modulo")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.int_modulo",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.int_modulo", [args.expr1,args.expr2])
         } break
 
         case "sint": {
-          load_lib("sys.sint_modulo")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.sint_modulo",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.sint_modulo", [args.expr1,args.expr2])
         } break
 
         case "long": {
-          load_lib("sys.long_modulo")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.long_modulo",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.long_modulo", [args.expr1,args.expr2])
         } break
 
         case "slong": {
-          load_lib("sys.slong_modulo")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.slong_modulo",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.slong_modulo", [args.expr1,args.expr2])
         } break
 
         default:
           throw new CompError(`Unsupported datatype '${ctx_type}' for operation '${token.name}'`)
-          break
       }
     } break
                                           //comparison expressions
@@ -1872,24 +1872,15 @@ function translate(token, ctx_type) {
         } break
 
         case "long": {
-          load_lib("sys.long_greater")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.long_greater",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.long_greater", [args.expr1,args.expr2])
         } break
 
         case "slong": {
-          load_lib("sys.slong_greater")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.slong_greater",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.slong_greater", [args.expr1,args.expr2])
         } break
 
         default:
           throw new CompError(`Unsupported datatype '${ctx_type}' for operation '${token.name}'`)
-          break
       }
       type = "bool"
     } break
@@ -1917,24 +1908,15 @@ function translate(token, ctx_type) {
           } break
 
         case "long": {
-          load_lib("sys.long_less")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.long_less",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.long_less", [args.expr1,args.expr2])
           } break
 
         case "slong": {
-          load_lib("sys.slong_less")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.slong_less",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.slong_less", [args.expr1,args.expr2])
           } break
 
         default:
           throw new CompError(`Unsupported datatype '${ctx_type}' for operation '${token.name}'`)
-          break
       }
       type = "bool"
     } break
@@ -1968,19 +1950,14 @@ function translate(token, ctx_type) {
           } break
 
         case "long": {
-          load_lib("sys.long_greater")
-          load_lib("sys.long_equal")
-
           let temp_vars = [get_temp_word(), get_temp_word()]
 
-          let call = {name:"function",type:"expression",arguments:{name:"sys.long_greater",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
+          let prefix_and_value = function_call("sys.long_greater", [args.expr1,args.expr2])
           prefix = prefix_and_value[0]
 
           prefix.push(`write ${prefix_and_value[1][0]} ${temp_vars[0].label}`)
 
-          call = {name:"function",type:"expression",arguments:{name:"sys.long_equal",exprs:[args.expr1,args.expr2]}}
-          prefix_and_value = translate(call)
+          prefix_and_value = function_call("sys.long_equal", [args.expr1,args.expr2])
           prefix.push(...prefix_and_value[0])
           prefix.push(`write ${prefix_and_value[1][0]} ${temp_vars[1].label}`)
 
@@ -1993,19 +1970,14 @@ function translate(token, ctx_type) {
           } break
 
         case "slong": {
-          load_lib("sys.slong_greater")
-          load_lib("sys.slong_equal")
-
           let temp_vars = [get_temp_word(), get_temp_word()]
 
-          let call = {name:"function",type:"expression",arguments:{name:"sys.slong_greater",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
+          let prefix_and_value = function_call("sys.slong_greater", [args.expr1,args.expr2])
           prefix = prefix_and_value[0]
 
           prefix.push(`write ${prefix_and_value[1][0]} ${temp_vars[0].label}`)
 
-          call = {name:"function",type:"expression",arguments:{name:"sys.slong_equal",exprs:[args.expr1,args.expr2]}}
-          prefix_and_value = translate(call)
+          prefix_and_value = function_call("sys.slong_equal", [args.expr1,args.expr2])
           prefix.push(...prefix_and_value[0])
           prefix.push(`write ${prefix_and_value[1][0]} ${temp_vars[1].label}`)
 
@@ -2019,7 +1991,6 @@ function translate(token, ctx_type) {
 
         default:
           throw new CompError(`Unsupported datatype '${ctx_type}' for operation '${token.name}'`)
-          break
       }
       type = "bool"
     } break
@@ -2053,19 +2024,14 @@ function translate(token, ctx_type) {
           } break
 
         case "long": {
-          load_lib("sys.long_less")
-          load_lib("sys.long_equal")
-
           let temp_vars = [get_temp_word(), get_temp_word()]
 
-          let call = {name:"function",type:"expression",arguments:{name:"sys.long_less",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
+          let prefix_and_value = function_call("sys.long_less", [args.expr1,args.expr2])
           prefix = prefix_and_value[0]
 
           prefix.push(`write ${prefix_and_value[1][0]} ${temp_vars[0].label}`)
 
-          call = {name:"function",type:"expression",arguments:{name:"sys.long_equal",exprs:[args.expr1,args.expr2]}}
-          prefix_and_value = translate(call)
+          prefix_and_value = function_call("sys.long_equal", [args.expr1,args.expr2])
           prefix.push(...prefix_and_value[0])
           prefix.push(`write ${prefix_and_value[1][0]} ${temp_vars[1].label}`)
 
@@ -2078,19 +2044,14 @@ function translate(token, ctx_type) {
           } break
 
         case "slong": {
-          load_lib("sys.slong_less")
-          load_lib("sys.slong_equal")
-
           let temp_vars = [get_temp_word(), get_temp_word()]
 
-          let call = {name:"function",type:"expression",arguments:{name:"sys.slong_less",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
+          let prefix_and_value = function_call("sys.slong_less", [args.expr1,args.expr2])
           prefix = prefix_and_value[0]
 
           prefix.push(`write ${prefix_and_value[1][0]} ${temp_vars[0].label}`)
 
-          call = {name:"function",type:"expression",arguments:{name:"sys.slong_equal",exprs:[args.expr1,args.expr2]}}
-          prefix_and_value = translate(call)
+          prefix_and_value = function_call("sys.slong_equal", [args.expr1,args.expr2])
           prefix.push(...prefix_and_value[0])
           prefix.push(`write ${prefix_and_value[1][0]} ${temp_vars[1].label}`)
 
@@ -2104,7 +2065,6 @@ function translate(token, ctx_type) {
 
         default:
           throw new CompError(`Unsupported datatype '${ctx_type}' for operation '${token.name}'`)
-          break
       }
       type = "bool"
     } break
@@ -2121,24 +2081,15 @@ function translate(token, ctx_type) {
         } break
 
         case "long": {
-          load_lib("sys.long_equal")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.long_equal",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.long_equal", [args.expr1,args.expr2])
           } break
 
         case "slong": {
-          load_lib("sys.slong_equal")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.slong_equal",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.slong_equal", [args.expr1,args.expr2])
           } break
 
         default:
           throw new CompError(`Unsupported datatype '${ctx_type}' for operation '${token.name}'`)
-          break
       }
       type = "bool"
     } break
@@ -2157,24 +2108,15 @@ function translate(token, ctx_type) {
         } break
 
         case "long": {
-          load_lib("sys.long_not_equal")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.long_not_equal",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.long_not_equal", [args.expr1,args.expr2])
         } break
 
         case "slong": {
-          load_lib("sys.slong_not_equal")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.slong_not_equal",exprs:[args.expr1,args.expr2]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.slong_not_equal", [args.expr1,args.expr2])
         } break
 
         default:
           throw new CompError(`Unsupported datatype '${ctx_type}' for operation '${token.name}'`)
-          break
       }
       type = "bool"
     } break
@@ -2198,71 +2140,47 @@ function translate(token, ctx_type) {
     case ">>": {
       log.debug(`op: ${token.name}, target type: ${ctx_type}`)
       switch (ctx_type) {
-        case "bool":
         case "int": {
           prefix = write_operand(args.expr,ctx_type)
           registers = ["[alu.>>]"]
         } break
 
         case "sint": {
-          load_lib("sys.sint_rshift")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.sint_rshift",exprs:[args.expr]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.sint_rshift", [args.expr])
         } break
 
         case "long": {
-          load_lib("sys.long_rshift")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.long_rshift",exprs:[args.expr]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.long_rshift", [args.expr])
         } break
 
         case "slong": {
-          load_lib("sys.slong_rshift")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.slong_rshift",exprs:[args.expr]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.slong_rshift", [args.expr])
         } break
 
         default:
           throw new CompError(`Unsupported datatype '${ctx_type}' for operation '${token.name}'`)
-          break
       }
     } break
 
     case "<<": {
       log.debug(`op: ${token.name}, target type: ${ctx_type}`)
       switch (ctx_type) {
-        case "bool":
         case "int":
         case "sint": {
-            prefix = write_operand(args.expr,ctx_type)
-            registers = ["[alu.<<]"]
+          prefix = write_operand(args.expr,ctx_type)
+          registers = ["[alu.<<]"]
         } break
 
         case "long": {
-          load_lib("sys.long_lshift")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.long_lshift",exprs:[args.expr]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.long_lshift", [args.expr])
         } break
 
         case "slong": {
-          load_lib("sys.slong_lshift")
-          let call = {name:"function",type:"expression",arguments:{name:"sys.slong_lshift",exprs:[args.expr]}}
-          let prefix_and_value = translate(call)
-          prefix = prefix_and_value[0]
-          registers = prefix_and_value[1]
+          [prefix, registers] = function_call("sys.slong_lshift", [args.expr])
         } break
 
         default:
           throw new CompError(`Unsupported datatype '${ctx_type}' for operation '${token.name}'`)
-          break
       }
     } break
 
@@ -2308,13 +2226,12 @@ function translate(token, ctx_type) {
       let prefix_and_value = translate(args.expr,"int")
       prefix = prefix_and_value[0]
       registers = prefix_and_value[1]
-      //~ if (prefix_and_value[2] != "int") {
-        //~ throw new CompError("not supported unless int")
-      //~ }
+      type = "bool"
       registers = [registers[registers.length - 1]]
     } break
 
     case "overflow": {
+      type = "bool"
       registers = ["[alu.ov]"]
     } break
 
@@ -2336,9 +2253,9 @@ function translate(token, ctx_type) {
 
       // but explicitly given type and max length will override these
       if (given_type_size !== undefined) {
-        if (given_type_size.length == 1) {
+        if (given_type_size.length === 1) {
           contained_type = given_type_size[0]
-        } else if (given_type_size.length == 2) {
+        } else if (given_type_size.length === 2) {
           contained_type = given_type_size[0]
           max_length = parseInt(given_type_size[1])
         }
@@ -2434,7 +2351,7 @@ function translate(token, ctx_type) {
       let item_size = data_type_size[array_type]
 
 
-      if (operation == "index") {
+      if (operation === "index") {
         let prefix_value_type = translate(args.expr, "int")
         if (prefix_value_type[2] != "int") {
           throw new CompError("Array indexes must be of type 'int'")
@@ -2471,15 +2388,15 @@ function translate(token, ctx_type) {
           registers.push(`[ram.${addr}]`)
         }
 
-      } else if (operation == "len") {
+      } else if (operation === "len") {
         registers = [current_len]
         type = "int"
 
-       } else if (operation == "max_len") {
+       } else if (operation === "max_len") {
         registers = [max_len]
         type = "int"
 
-      } else if (operation == "pop") {
+      } else if (operation === "pop") {
         // simply take one away from the length of the array, then return the item at that index
 
         prefix.push(`write ${current_len} alu.1`)
@@ -2619,11 +2536,10 @@ function translate(token, ctx_type) {
 
     default:
       throw new CompError(`Error translating expression:\nUnknown type '${token.name}'`)
-      break
     }
     return [prefix, registers, type]
 
-  } else if (token.type == "structure") {
+  } else if (token.type === "structure") {
     let result = []
     switch (token.name) {
 
@@ -2639,13 +2555,13 @@ function translate(token, ctx_type) {
       let target = main_tokens[0]
 
       for (let item of token.body) {
-        if (item.name == "else if") {
+        if (item.name === "else if") {
           clause_number++
           main_tokens.push([])
           exprs.push(item.arguments.expr)
           target = main_tokens[clause_number]
           else_if_present = true
-        } else if (item.name == "else") {
+        } else if (item.name === "else") {
           if (else_present) {
             throw new CompError("More than one else statement")
           }
@@ -2662,7 +2578,7 @@ function translate(token, ctx_type) {
         }
 
         let next_case_label
-        if (exprs.length == (i+1) && !else_present) {
+        if (exprs.length === (i+1) && !else_present) {
           next_case_label = `${label}_end`
         } else {
           next_case_label = `${label}_${i+1}`
@@ -2759,6 +2675,24 @@ function translate(token, ctx_type) {
       result.push(`${label}_end:`)
     } break
 
+    case "repeat": {
+      let [prefix, value, type] = translate(args.expr, "int")
+
+      let times_to_repeat = parseInt(value[0])
+
+      if (times_to_repeat < 0) {
+        throw new CompError("Number of times to repeat must be a positive number")
+      }
+
+      let body = translate_body(token.body)
+      prefix = []
+
+      while (times_to_repeat > 0) {
+        result.push(...body)
+        times_to_repeat--
+      }
+    } break
+
     case "function_def": {
       assert_global_name_available(args.name)
 
@@ -2807,7 +2741,6 @@ function translate(token, ctx_type) {
 
     default:
       throw new CompError(`Error translating structure:\nUnknown type '${token.name}'`)
-      break
     }
     return result
   } else {
@@ -2818,7 +2751,7 @@ function translate(token, ctx_type) {
 function compile(input, nested) {
   //init
     !nested && init_vars()
-    if (input == "") {
+    if (input === "") {
       throw new CompError("No input", 0)
     }
 
@@ -2835,8 +2768,8 @@ function compile(input, nested) {
     let include_block_mode = false
     for (let i = 0; i < input.length; i++) {
       let line = input[i].trim()   // remove any trailing whitesapce
-      if (line == "" || line == "\n") { continue } // if it is a newline, skip it
-      if (line == "///") {
+      if (line === "" || line === "\n") { continue } // if it is a newline, skip it
+      if (line === "///") {
         include_block_mode = ! include_block_mode
         continue
       }
@@ -2890,7 +2823,7 @@ function compile(input, nested) {
           targ[targ.length-1].body.push(token)
         }
 
-        if (token.type == "structure" && !(token.name in {"else":"","else if":""})) {     //when a structure header is parsed, set it to be target and expect indent
+        if (token.type === "structure" && !(token.name in {"else":"","else if":""})) {     //when a structure header is parsed, set it to be target and expect indent
           log.debug(`new target ↑ ${token.name}`)
           expect_indent = true
           targ.push(token)
@@ -2903,7 +2836,7 @@ function compile(input, nested) {
         }
       }
 
-      if (!nested && Math.round((i+1) % (input.length/100)) == 0 ) {
+      if (!nested && Math.round((i+1) % (input.length/100)) === 0 ) {
         postMessage(["update",(((i+1)/input.length)*100)-50])
       }
 
@@ -2924,13 +2857,13 @@ function compile(input, nested) {
     let output = ""
     let command = []
     for (let i = 0; i < tokens.length; i++) {
-      if (tokens[i].type == "expression" && tokens[i].name != "function") {
+      if (tokens[i].type === "expression" && tokens[i].name != "function") {
         throw new CompError("Unexpected expression", tokens[i].line)
       }
 
       try {
         command = translate(tokens[i])
-        if (tokens[i].name == "function") {
+        if (tokens[i].name === "function") {
           command = command[0] // if it is a function call (which are expressions) take only the prefix and bin the result register [[tokens],result] -> [tokens]
           let function_type = state.function_table[tokens[i].arguments.name].data_type
           if (function_type !== "none") {
@@ -2949,7 +2882,7 @@ function compile(input, nested) {
         }
       }
 
-      if (!nested && Math.round((i+1) % (tokens.length/100)) == 0 ) {
+      if (!nested && Math.round((i+1) % (tokens.length/100)) === 0 ) {
         postMessage(["update",(((i+1)/tokens.length)*100)+50])
       }
     }

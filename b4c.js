@@ -40,7 +40,7 @@ function write_file(path,data) {
 }
 
 program
-  .version('v0.45.0')
+  .version('v0.46.0')
   .arguments('<file>')
   .option('-o --output <filename>', 'output filename')
   .option('-c --compile', 'compile the input file')

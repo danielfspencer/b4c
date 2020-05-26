@@ -45,6 +45,7 @@ exports.compile = (input) => {
     let result = null
     try {
       result = context.compile_wrapped(input, false)
+      result += '\n'
     } catch (e) {
       log.error(`${LOG_PREFIX}: [Internal compiler error]\n${e.stack}`)
     }

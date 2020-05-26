@@ -37,8 +37,8 @@ exports.debug = false
 exports.compile = (input) => {
   const LOG_PREFIX = ' cmp'
   let context = create_context([
-    [COMPILER_LIBRARIES, 'libraries.js'],
-    [COMPILER_ENGINE, 'engine.js']
+    [COMPILER_LIBRARIES, '<libraries>'],
+    [COMPILER_ENGINE, '<compiler>']
   ], LOG_PREFIX)
 
   return new Promise((resolve, reject) => {
@@ -61,7 +61,7 @@ exports.compile = (input) => {
 exports.assemble = (input) => {
   const LOG_PREFIX = ' asm'
   let context = create_context([
-    [ASSEMBLER_ENGINE, 'engine.js'],
+    [ASSEMBLER_ENGINE, '<assembler>'],
   ], LOG_PREFIX)
 
   return new Promise((resolve, reject) => {

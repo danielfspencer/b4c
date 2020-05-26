@@ -1,35 +1,38 @@
 let debug = false
 
-onmessage = (msg) => {
-  switch(msg.data[0]) {
+onmessage = (event) => {
+  let message = event.data
+  switch(message[0]) {
     case "assemble":
-      let result = ""
-      try {
-        let as_array = msg.data[1].split("\n")
-        result = assemble(as_array)
-      } catch (error) {
-        if (error instanceof AsmError) {
-          log.error(error.toString())
-        } else {
-          throw error
-        }
-      } finally {
-        postMessage(['result',result])
-      }
+      let result = assemble_wrapped(message[1])
+      postMessage(['result',result])
       break
     case "debug":
-      debug = msg.data[1]
+      debug = message[1]
       break
   }
 }
 
-function AsmError(message, line) {
+function assemble_wrapped(input) {
+  try {
+    return assemble(input.split("\n"))
+  } catch (error) {
+    if (error instanceof AsmError) {
+      log.error(error.toString())
+    } else {
+      throw error
+    }
+    return null
+  }
+}
+
+function AsmError(message, location) {
   this.message = message
-  this.line = line
+  this.location = location
 }
 
 AsmError.prototype.toString = function() {
-  return "word " + this.line + ": \n'" + this.message + "' is not defined"
+  return `${this.location}:\n${this.message}`
 }
 
 const log = {
@@ -40,12 +43,12 @@ const log = {
 }
 
 function send_log(message, level) {
-  if (level == "debug" && !debug) {
+  if (level === "debug" && !debug) {
     return
   }
 
   let text
-  if (typeof message == "object") {
+  if (typeof message === "object") {
     text = JSON.stringify(message)
   } else {
     text = message
@@ -63,67 +66,43 @@ const opDefs = {
 }
 
 const defs = {
-  "alu.1" : 2048,
-  "alu.2" : 2049,
-  "alu.+" : 2050,
-  "alu.-" : 2051,
-  "alu.>>" : 2052,
-  "alu.<<" : 2053,
-  "alu.&" : 2054,
-  "alu.|" : 2055,
-  "alu.!" : 2056,
-  "alu.>" : 2057,
-  "alu.<" : 2058,
-  "alu.=" : 2059,
-  "alu.ov" : 2060,
-  "usrio.inp1" : 4096,
-  "usrio.inp2" : 4097,
-  "usrio.inp3" : 4098,
-  "usrio.out1" : 4099,
-  "usrio.out2" : 4100,
-  "usrio.out3" : 4101,
-  "kbd.pop": 8192,
-  "kbd.len": 8193,
-  "ctl.cnd" : 1,
-  "ctl.addrmode" : 2,
-  "ctl.framenum" : 4,
-  "ctl.lowtimer" : 8,
-  "ctl.hightimer" : 16
+  "ctl.sp" : 2,
+  "timer.low" : 3,
+  "timer.high" : 4,
+  "alu.1" : 8,
+  "alu.2" : 9,
+  "alu.+" : 10,
+  "alu.-" : 11,
+  "alu.>>" : 12,
+  "alu.<<" : 13,
+  "alu.&" : 14,
+  "alu.|" : 15,
+  "alu.!" : 16,
+  "alu.>" : 17,
+  "alu.<" : 18,
+  "alu.=" : 19,
+  "alu.ov" : 20,
+  "io.inp1" : 4096,
+  "io.inp2" : 4097,
+  "io.inp3" : 4098,
+  "io.out1" : 4099,
+  "io.out2" : 4100,
+  "io.out3" : 4101,
+  "io.kbd": 4102
 }
 
 function regToCode(id) {
-  if (id.toLowerCase().startsWith("ram-.")) { //it's a ram address (lower)
-    var number = parseInt(id.match(/[^.]*$/)[0], 10) // this is the bits after the dot
-    if ( number >= 0 && number <= 1023) {
-      return number+16384//it's valid
-    } else {
-      return false
-    }
-  } else if (id.toLowerCase().startsWith("ram.")) { //it's a ram address (current)
-    var number = parseInt(id.match(/[^.]*$/)[0], 10) // this is the bits after the dot
-    if ( number >= 0 && number <= 1023) {
-      return number+20480//it's valid
-    } else {
-      return false
-    }
-  } else if (id.toLowerCase().startsWith("ram+.")) { //it's a ram address (upper)
-    var number = parseInt(id.match(/[^.]*$/)[0], 10) // this is the bits after the dot
-    if ( number >= 0 && number <= 1023) {
-      return number+24576//it's valid
-    } else {
-      return false
-    }
-  } else if (id.toLowerCase().startsWith("ram#.")) { //it's a direct ram address
+  if (id.toLowerCase().startsWith("ram.")) { //it's a direct ram address
     var number = parseInt(id.match(/[^.]*$/)[0], 10) // this is the bits after the dot
     if ( number >= 0 && number < 16384) {
       return number+16384//it's valid
     } else {
       return false
     }
-  } else if (id.toLowerCase().startsWith("ram^.")) { //it's a direct ram (top frame)
+  } else if (id.toLowerCase().startsWith("stack.")) { //it's a stack address
     var number = parseInt(id.match(/[^.]*$/)[0], 10) // this is the bits after the dot
-    if ( number >= 0 && number < 16384) {
-      return number+28672//it's valid
+    if ( number >= 0 && number < 2048) {
+      return number+2048//it's valid
     } else {
       return false
     }
@@ -189,16 +168,36 @@ function assemble(lines) {
   var labels = {}
 
   log.info("1st Pass...")
+  let changed_count = 0
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i]
+
+    // replace any `write [addr1] addr2` instructions with `copy addr1 addr2`
+    if (/^\s*write \[\S*\]/.test(line)) {
+      let matches = /^\s*write \[(\S*)\] (\S*)/.exec(line)
+      changed_count++
+
+      line = `copy ${matches[1]} ${matches[2]}`
+
+      lines[i] = line
+    }
+  }
+  log.info(`↳ success, ${changed_count} instruction(s) optimised`)
+
+  log.info("2nd Pass...")
   for (var i = 0; i < lines.length; i++) {
-    if (lines[i] == "" ) {continue} // skip empty lines
+    if (lines[i] === "" ) {continue} // skip empty lines
     if (/\s*\/\//.test(lines[i])) {continue} // skip comments
     var line = lines[i].trim()
     line = line.split(" ") // turns "copy ram1" into ["copy", "ram1"]
     line.map(function(str){str.replace(/(\r|\n)/g,"")}) // strips trailing whitespace
 
-    if (line.length == 1 && !(line[0] in opDefs)) { // if it's one string
+    if (line.length === 1 && !(line[0] in opDefs)) { // if it's one string
       if (line[0].endsWith(":")) { // ends with : means it is a label
         let label = line[0].substr(0, line[0].length - 1)
+        if (label in labels) {
+          throw new AsmError(`Label '${label}' has already been defined`,`line ${i}`)
+        }
         labels[label] = adr + 32768
         log.debug("addr 0x" +  adr.toString(16) + " new label '" + label + "'")
         continue
@@ -213,16 +212,10 @@ function assemble(lines) {
       // it's a command
       var op = line[0]
       var args = []
-      var argNo = 0
       var pointerMap = ""
-      var cnd = "0"
 
       // assemble the op code
         var decimal = opToCode(op)
-        if (op.endsWith("?")) {
-          cnd = "1"
-          op = op.substr(0, line[0].length - 1)
-        }
         if (op in opDefs) {
           op = ("000" + opToCode(op).toString(2)).slice(-3)
         } else {
@@ -246,13 +239,9 @@ function assemble(lines) {
           args[y-1] =  numToBin(item)
         }
       }
-      // compute number of args
-      argNo = ("000" + args.length.toString(2)).slice(-3)
-      // computer pointer map
-      pointerMap = ("0000000" + pointerMap).slice(-7)
-      pointerMap = pointerMap.split('').reverse().join('')
+
       //now assemble the whole command
-      var header = op + pointerMap + "00000" + cnd
+      var header = op + pointerMap + "00000000000"
       if (args.length !== 0) {var body = "\n" + args.join("\n") } else {var body = ""}
       assembled.push( header + body + "\n" )
       adr += args.length +1
@@ -262,20 +251,19 @@ function assemble(lines) {
 
   var asm_string = assembled.join("") //join it all into one string
 
-  log.info("2nd Pass...")
+  log.info("3rd Pass...")
   for (var key in labels) {
     var bin = numToBin(labels[key].toString())
     asm_string = asm_string.replace( RegExp("\\b"+key+"\\b","gi") , bin)
   }
   log.info("↳ success, " + Object.keys(labels).length + " label(s) replaced")
 
-  log.info("3rd Pass...")
+  log.info("4th Pass...")
   var as_list = asm_string.split("\n")
-
   for (let i = 0; i < as_list.length; i++) {
     let line = as_list[i]
     if (!   /^[0-1]{16}\n?$/.test(line) && line != "") {
-      throw new AsmError(line, i)
+      throw new AsmError(`'${line}' is not defined`,`word ${i}`)
     }
   }
   log.info("↳ success, " + (as_list.length - 1) + " word(s) checked")

@@ -7,7 +7,7 @@
   "main": "b4c.js",
   "scripts": {
     "start": "node b4c.js",
-    "dist": "pkg -t node10 --public -o dist/b4c ."
+    "dist": "pkg -t node12 --public -o dist/b4c ."
   },
   "bin": "b4c.js",
   "pkg": {

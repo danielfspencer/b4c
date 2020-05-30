@@ -14,7 +14,9 @@
   "repository": "https://github.com/danielfspencer/blizzard-4",
   "dependencies": {
     "colors": "~1.4.0",
-    "commander": "~5.1.0",
+    "commander": "~5.1.0"
+  },
+  "devDependencies": {
     "pkg": "~4.4.0"
   }
 }

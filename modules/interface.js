@@ -45,7 +45,6 @@ exports.compile = (input) => {
     let result = null
     try {
       result = context.compile_wrapped(input, false)
-      result += '\n'
     } catch (e) {
       log.error(`${LOG_PREFIX}: [Internal compiler error]\n${e.stack}`)
     }
@@ -53,7 +52,7 @@ exports.compile = (input) => {
     if (result === null) {
       reject()
     } else {
-      resolve([result, context.get_ast()])
+      resolve([result + '\n', context.get_ast()])
     }
   })
 }

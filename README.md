@@ -16,7 +16,7 @@ Options:
   -q --quiet              only print error messages
   -h, --help              display help for command
   If neither -c nor -a is specified then the input
-  files's extension determines the mode
+  file's extension determines the mode
 
   - Compile program.b4 into program.asm
   $ b4c program.b4
@@ -56,7 +56,7 @@ npm run dist
 
 If you are running Linux, you can then install the binary for user-wide use with:
 ```bash
-`cp dist/b4c ~/.local/bin`
+cp dist/b4c ~/.local/bin
 ```
 
 You can then invoke the compiler by typing

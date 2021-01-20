@@ -60,7 +60,7 @@ program
   .option('-q --quiet', 'only print error messages')
   .on('--help', () => {
     console.log('  If neither -c nor -a is specified then the input')
-    console.log('  files\'s extension determines the mode\n')
+    console.log('  file\'s extension determines the mode\n')
     console.log('  - Compile program.b4 into program.asm')
     console.log('  $ b4c program.b4\n')
     console.log('  - Compile then assemble program.b4 into program.bin')

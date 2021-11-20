@@ -1,6 +1,6 @@
 {
   "name": "b4c",
-  "version": "0.48.0",
+  "version": "1.0.0",
   "license": "GPL-3.0",
   "description": "Standalone compiler for the Blizzard 4 16-bit computer.",
   "author": "Daniel Spencer <danielfspencer1@gmail.com>",

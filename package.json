@@ -17,6 +17,6 @@
     "commander": "~5.1.0"
   },
   "devDependencies": {
-    "pkg": "~4.4.0"
+    "pkg": "^5.3.1"
   }
 }

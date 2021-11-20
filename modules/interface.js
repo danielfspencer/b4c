@@ -9,12 +9,16 @@ const COMPILER_ENGINE = fs.readFileSync(path.join(__dirname, '../compiler/engine
 const COMPILER_LIBRARIES = fs.readFileSync(path.join(__dirname, '../compiler/libraries.js'))
 const ASSEMBLER_ENGINE = fs.readFileSync(path.join(__dirname, '../assembler/engine.js'))
 
-function create_context(files, log_prefix) {
+function create_context(files, log_prefix, handler) {
   // create fake WebWorker environment
+
+  if (handler === undefined) {
+    handler = log.handle_worker_log
+  }
   const context = {
     importScripts: () => {},
     performance: performance,
-    postMessage: (data) => log.handle_worker_log(log_prefix, data),
+    postMessage: (data) => handler(log_prefix, data),
   }
 
   // instantiate the context with the given global vars
@@ -34,12 +38,12 @@ function create_context(files, log_prefix) {
 
 exports.debug = false
 
-exports.compile = (input) => {
+exports.compile = (input, handler) => {
   const LOG_PREFIX = ' cmp'
   let context = create_context([
     [COMPILER_LIBRARIES, '<libraries>'],
     [COMPILER_ENGINE, '<compiler>']
-  ], LOG_PREFIX)
+  ], LOG_PREFIX, handler)
 
   return new Promise((resolve, reject) => {
     let result = null
@@ -57,11 +61,11 @@ exports.compile = (input) => {
   })
 }
 
-exports.assemble = (input) => {
+exports.assemble = (input, handler) => {
   const LOG_PREFIX = ' asm'
   let context = create_context([
     [ASSEMBLER_ENGINE, '<assembler>'],
-  ], LOG_PREFIX)
+  ], LOG_PREFIX, handler)
 
   return new Promise((resolve, reject) => {
     let result = null
